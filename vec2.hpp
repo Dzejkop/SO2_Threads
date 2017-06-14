@@ -31,6 +31,11 @@ struct vec2
         return *this + -other;
     }
 
+    bool operator==(const vec2& other) const
+    {
+        return this->x == other.x && this->y == other.y;
+    }
+
     T x;
     T y;
 };

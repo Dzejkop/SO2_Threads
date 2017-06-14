@@ -13,4 +13,4 @@
 
 typedef unsigned int uint;
 
-typedef vec2<uint> uvec2;
+typedef vec2<int> ivec2;

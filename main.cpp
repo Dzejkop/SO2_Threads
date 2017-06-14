@@ -1,76 +1,100 @@
 #include "common.hpp"
 
+#include "map.hpp"
+#include "car.hpp"
+
 #include <ncurses.h>
 
 using namespace std::literals::chrono_literals;
 
-struct Car
-{
-    uvec2 position;
-    uvec2 direction;
-};
-
-std::vector<std::string> MAP = {
-"000##000",
-"000##000",
-"000##000",
-"########",
-"########",
-"000##000",
-"000##000",
-"000##000"
-};
-
-std::mutex carsMutex;
-std::vector<const Car*> cars;
-
-const char* ROAD = " ";
-const char* BUILDING = "#";
-
-void carThread(uvec2 p, uvec2 d)
-{
-    Car car = {p, d};
-
-    carsMutex.lock();
-    cars.push_back(&car);
-    carsMutex.unlock();
-
-    while (true)
-    {
-        std::this_thread::sleep_for(30ms);
-
-        car.position = car.position + car.direction;
-    }
-}
-
 int columns = 0, rows = 0;
+
+const std::chrono::milliseconds refreshStep = 30ms;
+
+const std::vector<std::string> DEFAULT_MAP = {
+    "............",
+    ".##.#>#>>>#.",
+    ".#..^ v...v.",
+    "....^ v...v.",
+    "....^ v...v.",
+    "....^ v...v.",
+    ".#>>#>#>>>#.",
+    ".^..^.v...v.",
+    ".#<<#<#<<<#.",
+    "....^ v.....",
+    "....^ v.....",
+    "....^ v.....",
+    ".#..^ v...#.",
+    ".##.#<#..##.",
+    "............"
+};
+
+std::vector<std::string> loadMapFromFile(std::string fname)
+{
+    return std::vector<std::string>();
+}
 
 int main(int argc, char** argv)
 {
     initscr();
+    printw("Starting...");
+
+    printw("Press any key to start.");
+    getch();
+
+    curs_set(0);
     getmaxyx(stdscr, rows, columns);
 
-    auto t1 = std::thread(carThread, uvec2(0,0), uvec2(0,1));
+    Map map;
+
+    std::vector<std::string> map_str = DEFAULT_MAP;
+
+    map.SpawnCar(ivec2(6, 7));
+    map.SpawnCar(ivec2(1, 8));
+    map.SpawnCar(ivec2(2, 8));
+    map.SpawnCar(ivec2(4, 7));
+    map.SpawnCar(ivec2(3, 8));
+    map.SpawnCar(ivec2(4, 8));
+    map.SpawnCar(ivec2(5, 8));
+    map.SpawnCar(ivec2(6, 8));
+
+    map.LoadMap(map_str);
+    map.Run();
+
+    start_color();
+    init_pair( 1, COLOR_RED, COLOR_RED );
+    init_pair( 2, COLOR_WHITE, COLOR_WHITE);
 
     while (true)
     {
-        std::this_thread::sleep_for(20ms);
+        clear();
 
-        for (uint y = 0; y < MAP.size(); y++)
+        attron(COLOR_PAIR(2));
+        for (uint x = 0; x < map.Size().x; x++)
         {
-            for (uint x = 0; x < MAP[y].size(); x++)
+            for (uint y = 0; y < map.Size().y; y++)
             {
-                mvprintw(x, y, MAP[y][x] != '#' ? "#" : " ");
+                if (map.Get({x, y})->wall)
+                    mvprintw(y, x, "#");
             }
         }
+        attroff(COLOR_PAIR(2));
 
-        for (auto c : cars)
+        attron(COLOR_PAIR(1));
+        for (auto c : map.GetCars())
         {
-            mvprintw(c->position.x, c->position.y, "@");
+
+            mvprintw(c->GetPosition().y, c->GetPosition().x, "O");
+
         }
+        attroff(COLOR_PAIR(1));
 
         refresh();
+
+        std::this_thread::sleep_for(refreshStep);
     }
+
+    map.Stop();
 
     endwin();
 
