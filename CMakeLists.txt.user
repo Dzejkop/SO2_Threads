@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 4.3.0, 2017-06-13T19:49:11. -->
+<!-- Written by QtCreator 4.3.0, 2017-06-16T16:55:09. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -340,6 +340,7 @@
     </valuelist>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguation.Title">CarSim</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.Arguments"></value>
+    <value type="bool" key="CMakeProjectManager.CMakeRunConfiguration.UseTerminal">true</value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory"></value>
     <value type="QString" key="CMakeProjectManager.CMakeRunConfiguration.UserWorkingDirectory.default">/home/dzejkop/Desktop/build-CarSim-Desktop-Default</value>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>

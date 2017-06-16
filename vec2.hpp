@@ -26,6 +26,15 @@ struct vec2
         return vec2(-x, -y);
     }
 
+    vec2 operator+=(const vec2& other)
+    {
+        vec2 temp = *this + other;
+
+        this->x = temp.x;
+        this->y = temp.y;
+        return temp;
+    }
+
     vec2 operator-(const vec2& other) const
     {
         return *this + -other;

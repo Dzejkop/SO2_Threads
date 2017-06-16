@@ -3,17 +3,20 @@
 
 #include "car.hpp"
 
+#include "graph.hpp"
+
 class Map
 {
 public:
     struct Segment
     {
-        static Segment Wall();
-        static Segment Intersection();
-        static Segment Road(ivec2 dir);
+        static Segment Wall(ivec2 pos);
+        static Segment Intersection(ivec2 pos);
+        static Segment Road(ivec2 pos, ivec2 dir);
 
-        Segment(bool i, bool w, ivec2 d);
+        Segment(ivec2 pos, bool i, bool w, ivec2 d);
 
+        ivec2 position;
         ivec2 direction;
 
         bool intersection;
@@ -29,30 +32,33 @@ public:
         const Segment* right;
     };
 
-    bool IsWall(ivec2 pos) const;
-    bool IsOccupied(ivec2 pos) const;
-    Section GetSection(ivec2 pos) const;
+    typedef bool (*SegmentPredicate)(const Segment*);
 
-    const Car* SpawnCar(ivec2 pos);
+    void    LockMove()              const;
+    void    UnlockMove()            const;
+    bool    IsWall(ivec2 pos)       const;
+    bool    IsOccupied(ivec2 pos)   const;
+    Section GetSection(ivec2 pos)   const;
+    std::vector<ivec2> GetIntersectionLanes(ivec2 pos) const;
 
-    void Run();
-    void Stop();
-    void LoadMap(std::vector<std::string> map);
-    void GenerateMap(ivec2 size);
+    ivec2                       Size()                              const;
+    const Segment*              Get(ivec2 pos)                      const;
+    const std::vector<Car*>&    GetCars()                           const;
+    std::vector<const Segment*> Filter(SegmentPredicate predicate)  const;
 
-    void LockMove() const;
-    void UnlockMove() const;
-
-    const Segment* Get(ivec2 pos) const;
-    ivec2 Size() const;
-
-    const std::vector<Car*>& GetCars() const;
+    void        Run();
+    void        Stop();
+    void        LoadMap(const std::vector<std::string>& map);
+    void        GenerateMap(ivec2 size);
+    const Car*  SpawnCar(ivec2 pos);
 
 private:
-    std::vector<std::vector<Segment>> _map;
-    std::vector<Car*> _cars;
+    void BuildGraph();
 
-    std::vector<std::thread> _carThreads;
+    Graph                               _graph;
+    std::vector<std::vector<Segment>>   _map;
+    std::vector<Car*>                   _cars;
+    std::vector<std::thread>            _carThreads;
 
     mutable std::mutex _mtx;
 };

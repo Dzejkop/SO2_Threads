@@ -3,10 +3,9 @@
 
 using namespace std::literals::chrono_literals;
 
-const std::chrono::milliseconds carThreadStep = 60ms;
-
-Car::Car(const Map& map)
+Car::Car(const Map& map, std::chrono::milliseconds stepTime)
     : _map(map)
+    , _updateTime(stepTime)
 {
 }
 
@@ -29,7 +28,7 @@ void Car::Run()
             Move();
         }
 
-        std::this_thread::sleep_for(carThreadStep);
+        std::this_thread::sleep_for(_updateTime);
     }
 }
 
@@ -57,16 +56,7 @@ void Car::Move()
 
 std::vector<ivec2> Car::GetPossibleDirections() const
 {
-    std::vector<ivec2> directions;
-
-    Map::Section section = _map.GetSection(_position);
-
-    if (section.right && section.right->direction == ivec2(1, 0)) directions.push_back(ivec2(1, 0));
-    if (section.top && section.top->direction == ivec2(0, 1)) directions.push_back(ivec2(0, 1));
-    if (section.bottom && section.bottom->direction == ivec2(0, -1)) directions.push_back(ivec2(0, -1));
-    if (section.left && section.left->direction == ivec2(-1, 0)) directions.push_back(ivec2(-1, 0));
-
-    return directions;
+    return _map.GetIntersectionLanes(_position);
 }
 
 const ivec2& Car::GetPosition() const

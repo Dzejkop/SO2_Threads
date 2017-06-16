@@ -13,10 +13,13 @@ compile_commands.json
 CTestTestfile.cmake
 
 ### VisualStudioCode ###
+.vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+CarSim
 
 # End of https://www.gitignore.io/api/cmake,visualstudiocode

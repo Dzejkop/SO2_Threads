@@ -5,16 +5,19 @@
 
 #include <ncurses.h>
 
+#include <fstream>
+
+#include "graph.hpp"
+#include "config.hpp"
+
 using namespace std::literals::chrono_literals;
 
 int columns = 0, rows = 0;
 
-const std::chrono::milliseconds refreshStep = 30ms;
-
 const std::vector<std::string> DEFAULT_MAP = {
     "............",
-    ".##.#>#>>>#.",
-    ".#..^ v...v.",
+    "....#>#>>>#.",
+    "....^ v...v.",
     "....^ v...v.",
     "....^ v...v.",
     "....^ v...v.",
@@ -22,22 +25,55 @@ const std::vector<std::string> DEFAULT_MAP = {
     ".^..^.v...v.",
     ".#<<#<#<<<#.",
     "....^ v...v.",
-    "....^ v<<<#.",
+    "....^ #<<<#.",
     "....^ v.....",
-    ".#..^ v...#.",
-    ".##.#<#..##.",
+    "....^ v.....",
+    "....#<#.....",
     "............"
 };
 
 std::vector<std::string> loadMapFromFile(std::string fname)
 {
-    return std::vector<std::string>();
+    std::ifstream fileIn(fname);
+
+    std::vector<std::string> lines;
+    std::string line;
+
+    while (std::getline(fileIn, line))
+    {
+        lines.push_back(line);
+    }
+
+    return lines;
 }
 
 int main(int argc, char** argv)
 {
     initscr();
-    printw("Starting...");
+    printw("Starting...\n");
+
+    Map map;
+
+    if (argc >= 2)
+    {
+        std::string mapFile(argv[1]);
+        printw("Loading custom map from: %s\n", mapFile.c_str());
+        map.LoadMap(loadMapFromFile(mapFile));
+    }
+    else
+    {
+        printw("No map file provided, loading default map.\n");
+        map.LoadMap(DEFAULT_MAP);
+    }
+
+    printw("Spawning cars...\n");
+    auto allIntersections = map.Filter([](auto s) { return s->intersection; });
+
+    for (uint i = 0; i < 20; i++)
+    {
+        ivec2 randomPos = allIntersections.at(rand() % allIntersections.size())->position;
+        map.SpawnCar(randomPos);
+    }
 
     printw("Press any key to start.");
     getch();
@@ -45,20 +81,6 @@ int main(int argc, char** argv)
     curs_set(0);
     getmaxyx(stdscr, rows, columns);
 
-    Map map;
-
-    std::vector<std::string> map_str = DEFAULT_MAP;
-
-    map.SpawnCar(ivec2(6, 7));
-    map.SpawnCar(ivec2(1, 8));
-    map.SpawnCar(ivec2(2, 8));
-    map.SpawnCar(ivec2(4, 7));
-    map.SpawnCar(ivec2(3, 8));
-    map.SpawnCar(ivec2(4, 8));
-    map.SpawnCar(ivec2(5, 8));
-    map.SpawnCar(ivec2(6, 8));
-
-    map.LoadMap(map_str);
     map.Run();
 
     start_color();
@@ -91,7 +113,7 @@ int main(int argc, char** argv)
 
         refresh();
 
-        std::this_thread::sleep_for(refreshStep);
+        std::this_thread::sleep_for(Config::screenRefreshStep);
     }
 
     map.Stop();
