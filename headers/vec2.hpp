@@ -28,11 +28,8 @@ struct vec2
 
     vec2 operator+=(const vec2& other)
     {
-        vec2 temp = *this + other;
-
-        this->x = temp.x;
-        this->y = temp.y;
-        return temp;
+        *this = *this + other;
+        return *this;
     }
 
     vec2 operator-(const vec2& other) const
@@ -43,6 +40,11 @@ struct vec2
     bool operator==(const vec2& other) const
     {
         return this->x == other.x && this->y == other.y;
+    }
+
+    bool operator!=(const vec2& other) const
+    {
+        return !(*(this) == other);
     }
 
     T x;

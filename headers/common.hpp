@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "toolbox.hpp"
 #include "vec2.hpp"
 
 typedef unsigned int uint;

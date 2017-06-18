@@ -22,5 +22,5 @@ public:
     Node* NewNode(const ivec2& position);
 
 private:
-    std::vector<Node> _nodes;
+    std::vector<Node> m_nodes;
 };

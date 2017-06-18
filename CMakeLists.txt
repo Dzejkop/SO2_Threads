@@ -7,8 +7,22 @@ include_directories(${CURSES_INCLUDE_DIR})
 
 set(CMAKE_CXX_STANDARD 14)
 
-set(SOURCE_FILES main.cpp car.cpp map.cpp vec2.cpp toolbox.cpp config.cpp graph.cpp)
-set(HEADER_FILES car.hpp map.hpp config.hpp graph.hpp)
+set(CMAKE_BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR})
+set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/sources)
 
-add_executable(CarSim ${SOURCE_FILES} ${HEADER_FILES})
+include_directories("${PROJECT_SOURCE_DIR}/headers")
+
+set(SOURCE_FILES 
+    ${SOURCE_DIR}/main.cpp 
+    ${SOURCE_DIR}/car.cpp 
+    ${SOURCE_DIR}/map.cpp 
+    ${SOURCE_DIR}/rendering.cpp 
+    ${SOURCE_DIR}/config.cpp 
+    ${SOURCE_DIR}/graph.cpp
+    ${SOURCE_DIR}/stats.cpp
+    ${SOURCE_DIR}/vec2.cpp
+)
+
+add_executable(CarSim ${SOURCE_FILES})
 target_link_libraries(CarSim ${CURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})

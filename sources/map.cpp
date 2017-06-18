@@ -1,6 +1,9 @@
 #include "map.hpp"
 
+#include <algorithm>
+
 #include "config.hpp"
+#include "stats.hpp"
 
 bool Map::IsWall(ivec2 pos) const
 {
@@ -9,17 +12,17 @@ bool Map::IsWall(ivec2 pos) const
 
 bool Map::IsOccupied(ivec2 pos) const
 {
-    _mtx.lock();
-    for (Car* c : _cars)
+    m_mutex.lock();
+    for (auto c : GetCars([](auto car) { return car->IsActive(); }))
     {
         if (c->GetPosition() == pos)
         {
-            _mtx.unlock();
+            m_mutex.unlock();
             return true;
         }
     }
 
-    _mtx.unlock();
+    m_mutex.unlock();
     return false;
 }
 
@@ -50,37 +53,32 @@ std::vector<ivec2> Map::GetIntersectionLanes(ivec2 pos) const
     return lanes;
 }
 
-const Car* Map::SpawnCar(ivec2 pos)
+Car* Map::SpawnCar(ivec2 pos)
 {
-    _mtx.lock();
-    Car* c = new Car(*this, Config::carUpdateDurations.at(rand() % Config::carUpdateDurations.size()));
+    m_mutex.lock();
+    Car* c = new Car(*this, pos);
 
-    c->SetPosition(pos);
+    m_cars.push_back(c);
 
-    _cars.push_back(c);
+    m_mutex.unlock();
 
-    _mtx.unlock();
+    Statistics::Instance().LogCarSpawn();
 
     return c;
 }
 
-const std::vector<Car*>& Map::GetCars() const
-{
-    return _cars;
-}
-
 void Map::BuildGraph()
 {
-    auto allIntersections = Filter([](auto s) { return s->intersection; });
+    auto allIntersections = GetSegments([](auto s) { return s->intersection; });
 
     for (auto intersection : allIntersections)
     {
-        _graph.NewNode(intersection->position);
+        m_graph.NewNode(intersection->position);
     }
 
     for (auto intersection : allIntersections)
     {
-        auto node = _graph.Get(intersection->position);
+        auto node = m_graph.Get(intersection->position);
         for (auto direction : GetIntersectionLanes(intersection->position))
         {
             ivec2 pCurrent = intersection->position;
@@ -89,36 +87,65 @@ void Map::BuildGraph()
             do {pCurrent += direction; cost++; }
             while(!Get(pCurrent)->intersection);
 
-            node->neighbours.push_back(std::make_pair(_graph.Get(pCurrent), cost));
+            node->neighbours.push_back(std::make_pair(m_graph.Get(pCurrent), cost));
         }
+    }
+}
+
+void Map::Loop()
+{
+    m_isActive = true;
+    while (m_isActive)
+    {
+        auto deadCars = GetCars([](auto c) { return !c->IsActive(); });
+
+        m_mutex.lock();
+
+        for (auto car : deadCars)
+        {
+            m_cars.erase(std::find(m_cars.begin(), m_cars.end(), car));
+        }
+
+        m_mutex.unlock();
+
+        if (m_cars.size() < Config::maxCarsInSimulation)
+        {
+            auto spawnPoints = GetSegments([](auto s) { return s->spawnPoint; });
+            ivec2 randomPos = spawnPoints.at(rand() % spawnPoints.size())->position;
+            SpawnCar(randomPos);
+        }
+
+        std::this_thread::sleep_for(Config::mapUpdateStep);
     }
 }
 
 void Map::Run()
 {
-    for (Car* c : _cars)
-    {
-        _carThreads.push_back(std::thread(&Car::Run, c));
-    }
+    m_isActive = true;
+    m_thread = std::thread(&Map::Loop, this);
 }
 
 void Map::Stop()
 {
-    for (std::thread& t : _carThreads)
+    m_isActive = false;
+    m_thread.join();
+
+    for (Car* c : m_cars)
     {
-        t.join();
+        c->Stop();
+        delete c;
     }
 }
 
 void Map::GenerateMap(ivec2 size)
 {
-    for (uint x = 0; x < size.x; x++)
+    for (int x = 0; x < size.x; x++)
     {
-        _map.push_back(std::vector<Segment>());
+        m_map.push_back(std::vector<Segment>());
 
-        for (uint y = 0; y < size.y; y++)
+        for (int y = 0; y < size.y; y++)
         {
-            _map.at(x).push_back(Segment::Wall({x, y}));
+            m_map.at(x).push_back(Segment::Wall({x, y}));
         }
     }
 }
@@ -127,15 +154,21 @@ void Map::LoadMap(const std::vector<std::string>& map)
 {
     GenerateMap(ivec2(map.at(0).size(), map.size()));
 
-    for (uint y = 0; y < map.size(); y++)
+    for (int y = 0; y < map.size(); y++)
     {
-        for (uint x = 0; x < map.at(y).size(); x++)
+        for (int x = 0; x < map.at(y).size(); x++)
         {
-            auto& mapRef = _map.at(x).at(y);
+            auto& mapRef = m_map.at(x).at(y);
             switch (map.at(y).at(x))
             {
                 case '#':
                     mapRef = Segment::Intersection({x, y});
+                    break;
+                case '!':
+                    mapRef = Segment::SpawnPoint({x, y});
+                    break;
+                case '@':
+                    mapRef = Segment::DestinationPoint({x, y});
                     break;
                 case '>':
                     mapRef = Segment::Road({x, y}, {1, 0});
@@ -158,22 +191,22 @@ void Map::LoadMap(const std::vector<std::string>& map)
 
 void Map::LockMove() const
 {
-    _mtx.lock();
+    m_mutex.lock();
 }
 
 void Map::UnlockMove() const
 {
-    _mtx.unlock();
+    m_mutex.unlock();
 }
 
-std::vector<const Map::Segment*> Map::Filter(Map::SegmentPredicate predicate) const
+std::vector<const Map::Segment*> Map::GetSegments(Map::SegmentPredicate predicate) const
 {
     std::vector<const Segment*> lst;
-    for (const auto& row : _map)
+    for (const auto& row : m_map)
     {
         for (const auto& segment : row)
         {
-            if (predicate(&segment))
+            if (!predicate || (predicate && predicate(&segment)))
             {
                 lst.push_back(&segment);
             }
@@ -187,33 +220,58 @@ const Map::Segment* Map::Get(ivec2 pos) const
     if (pos.x < 0 || pos.x >= Size().x || pos.y < 0 || pos.y >= Size().y)
             return nullptr;
 
-    return &(_map.at(pos.x).at(pos.y));
+    return &(m_map.at(pos.x).at(pos.y));
+}
+
+std::vector<const Car*> Map::GetCars(CarPredicate predicate) const
+{
+    std::vector<const Car*> lst;
+    for (auto car : m_cars)
+    {
+        if (!predicate || (predicate && predicate(car)))
+        {
+            lst.push_back(car);
+        }
+    }
+    return lst;
 }
 
 ivec2 Map::Size() const
 {
-    return ivec2(_map.size(), _map.at(0).size());
+    return ivec2(m_map.size(), m_map.at(0).size());
 }
 
 Map::Segment Map::Segment::Wall(ivec2 pos)
 {
-    return Segment(pos, false, true, ivec2());
+    return Segment(pos, false, false, false, true, ivec2());
 }
 
 Map::Segment Map::Segment::Intersection(ivec2 pos)
 {
-    return Segment(pos, true, false, ivec2());
+    return Segment(pos, true, false, false, false, ivec2());
 }
 
 Map::Segment Map::Segment::Road(ivec2 pos, ivec2 dir)
 {
-    return Segment(pos, false, false, dir);
+    return Segment(pos, false, false, false, false, dir);
 }
 
-Map::Segment::Segment(ivec2 pos, bool i, bool w, ivec2 d)
+Map::Segment Map::Segment::SpawnPoint(ivec2 pos)
+{
+    return Segment(pos, true, true, false, false, ivec2());
+}
+
+Map::Segment Map::Segment::DestinationPoint(ivec2 pos)
+{
+    return Segment(pos, true, false, true, false, pos);
+}
+
+Map::Segment::Segment(ivec2 pos, bool i, bool sp, bool dp, bool w, ivec2 d)
     : position(pos)
     , intersection(i)
     , wall(w)
     , direction(d)
+    , spawnPoint(sp)
+    , destinationPoint(dp)
 {
 }
