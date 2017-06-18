@@ -25,4 +25,5 @@ set(SOURCE_FILES
 )
 
 add_executable(CarSim ${SOURCE_FILES})
+file(COPY ${PROJECT_SOURCE_DIR}/maps DESTINATION ${CMAKE_BINARY_DIR})
 target_link_libraries(CarSim ${CURSES_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
