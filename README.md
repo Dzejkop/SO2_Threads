@@ -2,11 +2,11 @@
 
 ## Description :triumph:
 
-:triumph:
+:100:
 
 ![](https://media.giphy.com/media/42C7eGLHbijtK/giphy.gif)
 
-:triumph:
+:100:
 
 ## Compilation :joy:
 ### Requirements:
@@ -19,7 +19,7 @@
 2. Execute `make`
 3. All done!
 
-## Execution :
+## Execution :heart_eyes:
 The resulting binary will be located in the `bin` directory.
 
 It can be executed without any arguments `./bin/CarSim`.
