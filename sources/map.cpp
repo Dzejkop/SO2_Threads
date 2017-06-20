@@ -139,6 +139,7 @@ void Map::Stop()
 
 void Map::GenerateMap(ivec2 size)
 {
+    m_map.clear();
     for (int x = 0; x < size.x; x++)
     {
         m_map.push_back(std::vector<Segment>());
@@ -154,6 +155,9 @@ void Map::LoadMap(const std::vector<std::string>& map)
 {
     GenerateMap(ivec2(map.at(0).size(), map.size()));
 
+    uint spawnPointCount = 0;
+    uint destinationPointCount = 0;
+
     for (int y = 0; y < map.size(); y++)
     {
         for (int x = 0; x < map.at(y).size(); x++)
@@ -166,9 +170,11 @@ void Map::LoadMap(const std::vector<std::string>& map)
                     break;
                 case '!':
                     mapRef = Segment::SpawnPoint({x, y});
+                    spawnPointCount++;
                     break;
                 case '@':
                     mapRef = Segment::DestinationPoint({x, y});
+                    destinationPointCount++;
                     break;
                 case '>':
                     mapRef = Segment::Road({x, y}, {1, 0});
@@ -183,6 +189,22 @@ void Map::LoadMap(const std::vector<std::string>& map)
                     mapRef = Segment::Road({x, y}, {0, 1});
                     break;
             }
+        }
+    }
+
+    // Verify map
+
+    if (spawnPointCount == 0 || destinationPointCount == 0)
+        throw std::runtime_error("Map must containt at least 1 spawn point and at least 1 destination point.");
+
+    for (int x = 0; x < m_map.size(); x++)
+    {
+        for (int y = 0; y < m_map.at(x).size(); y++)
+        {
+            const auto& segment = m_map.at(x).at(y);
+
+            if (segment.intersection && GetIntersectionLanes({x, y}).size() == 0)
+                throw std::runtime_error("An intersection with no lanes.");
         }
     }
 

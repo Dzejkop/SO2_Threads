@@ -70,10 +70,19 @@ int main(int argc, char** argv)
         try
         {
             map.LoadMap(loadMapFromFile(mapFile));
+            printw("Success!\n");
+        }
+        catch(std::runtime_error& err)
+        {
+            printw("An error occured while loading the specified map: \n");
+            printw(err.what());
+            printw("\nProceeding with the default map.\n");
+            map.LoadMap(DEFAULT_MAP);
         }
         catch(...)
         {
-            printw("An error occured while loading the map, the program will proceed using the default map.\n");
+            printw("An unkown error occured while loading the map.");
+            printw("The program will proceed using the default map.");
             map.LoadMap(DEFAULT_MAP);
         }
     }
@@ -86,6 +95,7 @@ int main(int argc, char** argv)
     printw("Press any key to start.");
     getch();
 
+    noecho();
     timeout(10);
 
     clear();
